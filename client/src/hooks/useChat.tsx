@@ -1,9 +1,12 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { socketService } from '@/api/socket';
 import * as http from '@/api/http';
-import { Message, User, WsIncomingMessage, WsError } from '@/types';
+import { Message, User, WsIncomingMessage, WsError, WsQueuedNotification } from '@/types';
 import { useAuth } from './useAuth';
 import { ensureSession } from '@/crypto/session-init';
+import { encrypt, decrypt } from '@/crypto/encryption';
+import { getSession, hasSession } from '@/crypto/session';
+import { saveMessages, loadMessages } from '@/store/storage';
 
 interface ChatState {
   messages: Message[];
@@ -13,7 +16,7 @@ interface ChatState {
 
 interface ChatContextType extends ChatState {
   sendMessage: (text: string) => void;
-  selectUser: (userId: string) => void;
+  selectUser: (userId: string | null) => void;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -30,6 +33,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     users: [],
     activeUserId: null,
   });
+  const activeUserRef = useRef(user);
+  activeUserRef.current = user;
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -39,13 +44,34 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    const unsub = socketService.onMessage((data: WsIncomingMessage | WsError) => {
+    if (!user) return;
+    const unsub = socketService.onMessage(async (data: WsIncomingMessage | WsError | WsQueuedNotification) => {
       if (data.type === 'message') {
+        if (!hasSession(data.from)) {
+          try {
+            await ensureSession(user.id, data.from);
+          } catch (err) {
+            console.error('[Chat] Cannot decrypt: no session with', data.from, err);
+            return;
+          }
+        }
+
+        const sessionKey = getSession(data.from);
+        if (!sessionKey) return;
+
+        let plaintext: string;
+        try {
+          plaintext = await decrypt(sessionKey, data.iv, data.ciphertext);
+        } catch (err) {
+          console.error('[Chat] Decryption failed:', err);
+          plaintext = '[Mensagem não pôde ser descriptografada]';
+        }
+
         const msg: Message = {
           id: nextMsgId(),
           from: data.from,
-          to: user?.id || '',
-          text: data.text,
+          to: user.id,
+          plaintext,
           timestamp: data.timestamp,
           direction: 'received',
         };
@@ -53,26 +79,53 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
     });
     return unsub;
-  }, [user?.id]);
+  }, [user]);
 
-  const sendMessage = useCallback((text: string) => {
-    if (!state.activeUserId || !text.trim()) return;
+  useEffect(() => {
+    const currentUser = activeUserRef.current;
+    if (state.activeUserId && currentUser) {
+      saveMessages(currentUser.id, state.activeUserId, state.messages);
+    }
+  }, [state.messages, state.activeUserId]);
 
-    socketService.send({ type: 'message', to: state.activeUserId, text: text.trim() });
+  const sendMessage = useCallback(async (text: string) => {
+    if (!state.activeUserId || !user || !text.trim()) return;
+
+    const sessionKey = getSession(state.activeUserId);
+    if (!sessionKey) {
+      console.error('[Chat] No session key for', state.activeUserId);
+      return;
+    }
+
+    const { iv, ciphertext } = await encrypt(sessionKey, text.trim());
+
+    socketService.send({ type: 'message', to: state.activeUserId, iv, ciphertext });
 
     const msg: Message = {
       id: nextMsgId(),
-      from: user?.id || '',
+      from: user.id,
       to: state.activeUserId,
-      text: text.trim(),
+      plaintext: text.trim(),
       timestamp: Date.now(),
       direction: 'sent',
     };
     setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
-  }, [state.activeUserId, user?.id]);
+  }, [state.activeUserId, user]);
 
-  const selectUser = useCallback(async (userId: string) => {
-    setState(prev => ({ ...prev, activeUserId: userId }));
+  const selectUser = useCallback(async (userId: string | null) => {
+    if (userId === null) {
+      setState(prev => ({ ...prev, activeUserId: null, messages: [] }));
+      return;
+    }
+
+    setState(prev => ({ ...prev, activeUserId: userId, messages: [] }));
+
+    if (user) {
+      const saved = loadMessages(user.id, userId);
+      if (saved.length > 0) {
+        setState(prev => ({ ...prev, messages: saved }));
+      }
+    }
 
     try {
       await ensureSession(user!.id, userId);

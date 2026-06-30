@@ -20,7 +20,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         background: isSent ? '#dcf8c6' : '#fff',
         border: '1px solid #ddd',
       }}>
-        <p style={{ margin: 0, wordBreak: 'break-word' }}>{message.text}</p>
+        <p style={{ margin: 0, wordBreak: 'break-word' }}>{message.plaintext}</p>
         <small style={{ color: '#888', fontSize: 10 }}>
           {new Date(message.timestamp).toLocaleTimeString()}
         </small>

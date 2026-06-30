@@ -1,6 +1,7 @@
 import { getSession, setSession, deriveSessionKey } from '@/crypto/session';
 import { loadPrivateKey, importPublicKey } from '@/crypto/keypair';
 import { fetchPublicKey } from '@/api/http';
+import { cachePublicKey, getCachedPublicKey } from '@/store/storage';
 
 export async function ensureSession(
   currentUserId: string,
@@ -16,7 +17,13 @@ export async function ensureSession(
     throw new Error('No private key found. Please log in again.');
   }
 
-  const { publicKey: peerPublicKeyBase64 } = await fetchPublicKey(peerId);
+  let peerPublicKeyBase64 = getCachedPublicKey(peerId);
+
+  if (!peerPublicKeyBase64) {
+    const response = await fetchPublicKey(peerId);
+    peerPublicKeyBase64 = response.publicKey;
+    cachePublicKey(peerId, peerPublicKeyBase64);
+  }
 
   const peerPublicKey = await importPublicKey(peerPublicKeyBase64);
 

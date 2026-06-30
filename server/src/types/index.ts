@@ -18,13 +18,15 @@ export interface AuthenticatedRequest extends Request {
 export interface WsMessage {
   type: 'message';
   to: string;
-  text: string;
+  iv: string;
+  ciphertext: string;
 }
 
 export interface WsOutgoingMessage {
   type: 'message';
   from: string;
-  text: string;
+  iv: string;
+  ciphertext: string;
   timestamp: number;
 }
 
@@ -36,4 +38,30 @@ export interface WsError {
 export interface PublicKeyEntry {
   userId: string;
   publicKey: string;
+}
+
+export interface StoredMessage {
+  id: string;
+  from: string;
+  to: string;
+  iv: string;
+  ciphertext: string;
+  timestamp: number;
+  delivered: boolean;
+}
+
+export interface WsQueuedNotification {
+  type: 'queued';
+  messageId: string;
+  to: string;
+}
+
+export interface WsOfflineMessages {
+  type: 'offline_messages';
+  messages: Array<{
+    from: string;
+    iv: string;
+    ciphertext: string;
+    timestamp: number;
+  }>;
 }

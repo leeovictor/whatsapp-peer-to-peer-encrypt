@@ -35,3 +35,6 @@ export const publishPublicKey = (publicKey: string) =>
 
 export const fetchPublicKey = (userId: string) =>
   request<{ publicKey: string }>('GET', `/users/${userId}/key`);
+
+export const fetchOfflineMessages = () =>
+  request<{ messages: unknown[] }>('GET', '/messages');

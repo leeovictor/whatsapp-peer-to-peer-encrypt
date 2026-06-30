@@ -7,7 +7,7 @@ export interface Message {
   id: string;
   from: string;
   to: string;
-  text: string;
+  plaintext: string;
   timestamp: number;
   direction: 'sent' | 'received';
 }
@@ -20,19 +20,27 @@ export interface AuthResponse {
 export interface WsIncomingMessage {
   type: 'message';
   from: string;
-  text: string;
+  iv: string;
+  ciphertext: string;
   timestamp: number;
 }
 
 export interface WsOutgoingMessage {
   type: 'message';
   to: string;
-  text: string;
+  iv: string;
+  ciphertext: string;
 }
 
 export interface WsError {
   type: 'error';
   message: string;
+}
+
+export interface WsQueuedNotification {
+  type: 'queued';
+  messageId: string;
+  to: string;
 }
 
 export interface PublicKeyResponse {

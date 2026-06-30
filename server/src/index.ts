@@ -4,6 +4,7 @@ import http from 'http';
 import { authRouter } from './auth/auth.router';
 import { usersRouter } from './users/users.router';
 import { keysRouter } from './keys/keys.router';
+import { messagesRouter } from './messages/messages.router';
 import { initWebSocketServer } from './ws/ws.server';
 
 const app = express();
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api', keysRouter);
+app.use('/api/messages', messagesRouter);
 
 const httpServer = http.createServer(app);
 initWebSocketServer(httpServer);
