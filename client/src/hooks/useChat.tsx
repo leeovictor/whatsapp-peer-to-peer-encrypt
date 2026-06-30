@@ -3,6 +3,7 @@ import { socketService } from '@/api/socket';
 import * as http from '@/api/http';
 import { Message, User, WsIncomingMessage, WsError } from '@/types';
 import { useAuth } from './useAuth';
+import { ensureSession } from '@/crypto/session-init';
 
 interface ChatState {
   messages: Message[];
@@ -70,9 +71,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
   }, [state.activeUserId, user?.id]);
 
-  const selectUser = useCallback((userId: string) => {
+  const selectUser = useCallback(async (userId: string) => {
     setState(prev => ({ ...prev, activeUserId: userId }));
-  }, []);
+
+    try {
+      await ensureSession(user!.id, userId);
+      console.log(`[Chat] Session established with ${userId}`);
+    } catch (err) {
+      console.error(`[Chat] Failed to establish session with ${userId}:`, err);
+    }
+  }, [user]);
 
   return (
     <ChatContext.Provider value={{ ...state, sendMessage, selectUser }}>

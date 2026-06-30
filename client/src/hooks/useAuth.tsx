@@ -10,6 +10,7 @@ import {
   storePublicKeyBase64,
   loadPublicKeyBase64,
 } from '@/crypto/keypair';
+import { clearSessions } from '@/crypto/session';
 
 interface AuthState {
   token: string | null;
@@ -79,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [connectSocket]);
 
   const logout = useCallback(() => {
+    clearSessions();
     socketService.disconnect();
     localStorage.removeItem('token');
     localStorage.removeItem('user');

@@ -14,7 +14,7 @@ export function ChatWindow() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <ChatHeader username={contact?.username || 'Unknown'} />
+      <ChatHeader username={contact?.username || 'Unknown'} peerId={activeUserId} />
       <MessageList />
       <MessageInput />
     </div>
