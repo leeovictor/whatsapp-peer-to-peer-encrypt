@@ -34,3 +34,7 @@ export interface WsError {
   type: 'error';
   message: string;
 }
+
+export interface PublicKeyResponse {
+  publicKey: string;
+}

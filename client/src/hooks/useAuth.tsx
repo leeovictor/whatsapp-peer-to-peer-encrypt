@@ -2,6 +2,14 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import * as http from '@/api/http';
 import { socketService } from '@/api/socket';
 import { User, AuthResponse } from '@/types';
+import {
+  generateKeyPair,
+  storePrivateKey,
+  loadPrivateKey,
+  exportPublicKey,
+  storePublicKeyBase64,
+  loadPublicKeyBase64,
+} from '@/crypto/keypair';
 
 interface AuthState {
   token: string | null;
@@ -29,6 +37,22 @@ function getInitialState(): AuthState {
   return { token, user };
 }
 
+async function ensureKeyPair(userId: string): Promise<void> {
+  const existing = await loadPrivateKey(userId);
+  if (existing) {
+    const pubBase64 = loadPublicKeyBase64(userId);
+    if (pubBase64) {
+      await http.publishPublicKey(pubBase64);
+    }
+    return;
+  }
+  const keyPair = await generateKeyPair();
+  await storePrivateKey(userId, keyPair.privateKey);
+  const pubBase64 = await exportPublicKey(keyPair.publicKey);
+  await storePublicKeyBase64(userId, pubBase64);
+  await http.publishPublicKey(pubBase64);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(getInitialState);
 
@@ -41,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('token', res.token);
     localStorage.setItem('user', JSON.stringify(res.user));
     setState({ token: res.token, user: res.user });
+    await ensureKeyPair(res.user.id);
     connectSocket(res.token);
   }, [connectSocket]);
 
@@ -49,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('token', res.token);
     localStorage.setItem('user', JSON.stringify(res.user));
     setState({ token: res.token, user: res.user });
+    await ensureKeyPair(res.user.id);
     connectSocket(res.token);
   }, [connectSocket]);
 

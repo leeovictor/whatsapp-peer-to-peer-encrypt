@@ -3,6 +3,7 @@ import cors from 'cors';
 import http from 'http';
 import { authRouter } from './auth/auth.router';
 import { usersRouter } from './users/users.router';
+import { keysRouter } from './keys/keys.router';
 import { initWebSocketServer } from './ws/ws.server';
 
 const app = express();
@@ -13,6 +14,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
+app.use('/api', keysRouter);
 
 const httpServer = http.createServer(app);
 initWebSocketServer(httpServer);

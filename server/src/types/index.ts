@@ -32,3 +32,8 @@ export interface WsError {
   type: 'error';
   message: string;
 }
+
+export interface PublicKeyEntry {
+  userId: string;
+  publicKey: string;
+}

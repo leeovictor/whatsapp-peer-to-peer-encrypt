@@ -29,3 +29,9 @@ export const login = (username: string, password: string) =>
 
 export const fetchUsers = () =>
   request<{ users: User[] }>('GET', '/users');
+
+export const publishPublicKey = (publicKey: string) =>
+  request<{ success: boolean }>('PUT', '/keys', { publicKey });
+
+export const fetchPublicKey = (userId: string) =>
+  request<{ publicKey: string }>('GET', `/users/${userId}/key`);
