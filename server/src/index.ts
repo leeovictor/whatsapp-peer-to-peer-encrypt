@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
@@ -9,6 +10,7 @@ import { messagesRouter } from './messages/messages.router';
 import { notificationsRouter } from './notifications/notifications.router';
 import { initVapidKeys } from './notifications/vapid.store';
 import { initWebSocketServer } from './ws/ws.server';
+import { initFirebase } from './config/firebase';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -34,6 +36,12 @@ const httpServer = http.createServer(app);
 initWebSocketServer(httpServer);
 
 (async () => {
+  try {
+    initFirebase();
+  } catch (err) {
+    console.error('[Server] Failed to init Firebase:', err);
+  }
+
   try {
     await initVapidKeys();
   } catch (err) {

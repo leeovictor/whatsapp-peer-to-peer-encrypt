@@ -10,14 +10,14 @@ const JWT_EXPIRES_IN = '24h';
 
 export const authService = {
   async register(username: string, password: string): Promise<{ token: string; user: Omit<User, 'passwordHash'> }> {
-    const existing = usersStore.findByUsername(username);
+    const existing = await usersStore.findByUsername(username);
     if (existing) {
       throw new Error('Username already exists');
     }
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     const user: User = { id: uuid(), username, passwordHash };
-    usersStore.create(user);
+    await usersStore.create(user);
 
     const token = jwt.sign({ sub: user.id, username: user.username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
@@ -26,7 +26,7 @@ export const authService = {
   },
 
   async login(username: string, password: string): Promise<{ token: string; user: Omit<User, 'passwordHash'> }> {
-    const user = usersStore.findByUsername(username);
+    const user = await usersStore.findByUsername(username);
     if (!user) {
       throw new Error('Invalid credentials');
     }

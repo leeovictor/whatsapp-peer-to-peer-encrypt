@@ -1,21 +1,39 @@
 import { User } from '../types';
+import { getDb } from '../config/firebase';
 
-const users = new Map<string, User>();
+const USERS_COLLECTION = 'users';
 
 export const usersStore = {
-  create(user: User): void {
-    users.set(user.id, user);
+  async create(user: User): Promise<void> {
+    await getDb().collection(USERS_COLLECTION).doc(user.id).set(user);
   },
 
-  findByUsername(username: string): User | undefined {
-    return Array.from(users.values()).find(u => u.username === username);
+  async findByUsername(username: string): Promise<User | undefined> {
+    const snapshot = await getDb()
+      .collection(USERS_COLLECTION)
+      .where('username', '==', username)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return undefined;
+
+    return snapshot.docs[0].data() as User;
   },
 
-  findById(id: string): User | undefined {
-    return users.get(id);
+  async findById(id: string): Promise<User | undefined> {
+    const doc = await getDb().collection(USERS_COLLECTION).doc(id).get();
+
+    if (!doc.exists) return undefined;
+
+    return doc.data() as User;
   },
 
-  findAll(): Omit<User, 'passwordHash'>[] {
-    return Array.from(users.values()).map(({ passwordHash, ...user }) => user);
+  async findAll(): Promise<Omit<User, 'passwordHash'>[]> {
+    const snapshot = await getDb().collection(USERS_COLLECTION).get();
+
+    return snapshot.docs.map(doc => {
+      const { passwordHash, ...user } = doc.data() as User;
+      return user;
+    });
   },
 };

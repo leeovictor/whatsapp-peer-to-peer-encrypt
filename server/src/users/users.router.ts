@@ -5,7 +5,8 @@ import { usersStore } from './users.store';
 
 export const usersRouter = Router();
 
-usersRouter.get('/', authMiddleware, (req: AuthenticatedRequest, res: Response) => {
-  const users = usersStore.findAll().filter(u => u.id !== req.user?.sub);
+usersRouter.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  const allUsers = await usersStore.findAll();
+  const users = allUsers.filter(u => u.id !== req.user?.sub);
   res.json({ users });
 });
