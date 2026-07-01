@@ -24,7 +24,7 @@ export function ChatPage() {
     <div style={headerStyle}>
       <strong>{user?.username}</strong>
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => setShowSettings(true)}>\u{2699}</button>
+        <button onClick={() => setShowSettings(true)}>{'\u{2699}'}</button>
         <button onClick={logout}>Sair</button>
       </div>
     </div>
@@ -32,7 +32,7 @@ export function ChatPage() {
 
   if (showSettings) {
     return (
-      <div style={{ height: '100vh', overflowY: 'auto' }}>
+      <div style={{ height: '100dvh', overflowY: 'auto' }}>
         <SecuritySettings onClose={() => setShowSettings(false)} />
       </div>
     );
@@ -40,7 +40,7 @@ export function ChatPage() {
 
   if (isMobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
         {userBar}
         {activeUserId ? (
           <div style={{ flex: 1, minHeight: 0 }}>
@@ -56,7 +56,7 @@ export function ChatPage() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
+    <div style={{ display: 'flex', height: '100dvh' }}>
       <div style={{ width: 300, borderRight: '1px solid #ccc', display: 'flex', flexDirection: 'column' }}>
         {userBar}
         <Sidebar />
