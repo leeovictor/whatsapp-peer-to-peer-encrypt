@@ -60,6 +60,12 @@ export interface WsStatusBatch {
   statuses: Array<{ userId: string; online: boolean }>;
 }
 
+export interface WsTypingNotification {
+  type: 'typing_start' | 'typing_stop';
+  from?: string;
+  to: string;
+}
+
 export interface WsError {
   type: 'error';
   message: string;

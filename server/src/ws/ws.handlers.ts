@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { WsError, WsMessage, WsOutgoingMessage, WsDeliveryAck, WsReadReceipt, WsQueuedNotification, ConnectionsMap } from '../types';
+import { WsError, WsMessage, WsOutgoingMessage, WsDeliveryAck, WsReadReceipt, WsQueuedNotification, WsTypingNotification, ConnectionsMap } from '../types';
 import { enqueueMessage } from '../messages/messages.store';
 import { sendPushNotification } from '../notifications/notifications.service';
 
@@ -60,6 +60,10 @@ export function handleMessage(ws: WebSocket, data: string, userId: string, conne
       case 'read_receipt':
         handleReadReceipt(ws, parsed as WsReadReceipt & { to: string }, userId, connections);
         return;
+      case 'typing_start':
+      case 'typing_stop':
+        handleTypingNotification(ws, parsed as WsTypingNotification, userId, connections);
+        return;
     }
   }
 
@@ -107,6 +111,15 @@ function handleChatMessage(ws: WebSocket, parsed: WsMessage, userId: string, con
 
     sendPushNotification(parsed.to, 'New message', 'You have a new encrypted message');
   }
+}
+
+function handleTypingNotification(ws: WebSocket, parsed: WsTypingNotification, userId: string, connections: ConnectionsMap): void {
+  const outgoing: WsTypingNotification = {
+    type: parsed.type,
+    from: userId,
+    to: parsed.to,
+  };
+  sendToUser(parsed.to, outgoing, connections);
 }
 
 function handleReadReceipt(ws: WebSocket, parsed: { to: string; timestamp: number }, userId: string, connections: ConnectionsMap): void {

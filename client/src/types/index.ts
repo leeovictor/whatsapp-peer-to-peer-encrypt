@@ -57,6 +57,16 @@ export interface WsStatus {
   online: boolean;
 }
 
+export interface WsTypingStartNotification {
+  type: 'typing_start';
+  from: string;
+}
+
+export interface WsTypingStopNotification {
+  type: 'typing_stop';
+  from: string;
+}
+
 export interface WsStatusBatch {
   type: 'status_batch';
   statuses: Array<{ userId: string; online: boolean }>;

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { socketService } from '@/api/socket';
 import * as http from '@/api/http';
-import { Message, User, MessageStatus, WsIncomingMessage, WsDeliveryAck, WsReadReceipt, WsStatus, WsStatusBatch, WsError, WsQueuedNotification } from '@/types';
+import { Message, User, MessageStatus, WsIncomingMessage, WsDeliveryAck, WsReadReceipt, WsStatus, WsStatusBatch, WsTypingStartNotification, WsTypingStopNotification } from '@/types';
 import { useAuth } from './useAuth';
 import { ensureSession } from '@/crypto/session-init';
 import { encrypt, decrypt } from '@/crypto/encryption';
@@ -17,6 +17,7 @@ interface ChatState {
   activeUserId: string | null;
   activePeers: string[];
   onlineUsers: Set<string>;
+  typingUsers: Set<string>;
 }
 
 interface ChatContextType extends ChatState {
@@ -25,6 +26,8 @@ interface ChatContextType extends ChatState {
   addConversation: (peerId: string) => void;
   isOnline: (userId: string) => boolean;
   getUnreadCount: (peerId: string) => number;
+  sendTypingStart: () => void;
+  sendTypingStop: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -53,6 +56,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([]);
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
   const userRef = useRef(user);
   userRef.current = user;
   const activeUserIdRef = useRef(activeUserId);
@@ -70,7 +74,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
-    const unsub = socketService.onMessage(async (data: WsIncomingMessage | WsDeliveryAck | WsReadReceipt | WsStatus | WsStatusBatch | WsError | WsQueuedNotification) => {
+    const unsub = socketService.onMessage(async (data) => {
       switch (data.type) {
         case 'message':
           await handleIncomingMessage(data as WsIncomingMessage, user);
@@ -86,6 +90,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           break;
         case 'status_batch':
           handleStatusBatch(data as WsStatusBatch);
+          break;
+        case 'typing_start':
+          handleTypingStart(data as WsTypingStartNotification);
+          break;
+        case 'typing_stop':
+          handleTypingStop(data as WsTypingStopNotification);
           break;
       }
     });
@@ -175,6 +185,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  function handleTypingStart(data: WsTypingStartNotification) {
+    setTypingUsers(prev => {
+      if (prev.has(data.from)) return prev;
+      return new Set(prev).add(data.from);
+    });
+  }
+
+  function handleTypingStop(data: WsTypingStopNotification) {
+    setTypingUsers(prev => {
+      if (!prev.has(data.from)) return prev;
+      const next = new Set(prev);
+      next.delete(data.from);
+      return next;
+    });
+  }
+
   useEffect(() => {
     if (activeUserId && user) {
       const convMessages = messagesByPeer.get(activeUserId);
@@ -245,6 +271,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     });
   }, [activeUserId, user]);
 
+  const sendTypingStart = useCallback(() => {
+    if (!activeUserId) return;
+    socketService.send({ type: 'typing_start', to: activeUserId });
+  }, [activeUserId]);
+
+  const sendTypingStop = useCallback(() => {
+    if (!activeUserId) return;
+    socketService.send({ type: 'typing_stop', to: activeUserId });
+  }, [activeUserId]);
+
   const selectUser = useCallback(async (userId: string | null) => {
     if (userId === null) {
       setActiveUserId(null);
@@ -290,7 +326,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [messagesByPeer]);
 
   return (
-    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, onlineUsers, sendMessage, selectUser, addConversation, isOnline, getUnreadCount }}>
+    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, onlineUsers, typingUsers, sendMessage, selectUser, addConversation, isOnline, getUnreadCount, sendTypingStart, sendTypingStop }}>
       {children}
     </ChatContext.Provider>
   );
