@@ -1,4 +1,7 @@
 import { Request } from 'express';
+import { WebSocket } from 'ws';
+
+export type ConnectionsMap = Map<string, Set<WebSocket>>;
 
 export interface User {
   id: string;
@@ -38,6 +41,12 @@ export interface WsError {
 export interface PublicKeyEntry {
   userId: string;
   publicKey: string;
+}
+
+export interface PublicKeyVersion {
+  version: number;
+  publicKey: string;
+  createdAt: number;
 }
 
 export interface StoredMessage {

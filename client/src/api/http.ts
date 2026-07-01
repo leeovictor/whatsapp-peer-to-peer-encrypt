@@ -38,3 +38,9 @@ export const fetchPublicKey = (userId: string) =>
 
 export const fetchOfflineMessages = () =>
   request<{ messages: unknown[] }>('GET', '/messages');
+
+export const fetchPublicKeyVersions = (userId: string) =>
+  request<{ versions: Array<{ version: number; createdAt: number }> }>('GET', `/users/${userId}/key/versions`);
+
+export const fetchPublicKeyVersion = (userId: string, version: number) =>
+  request<{ publicKey: string; version: number | string }>('GET', `/users/${userId}/key?version=${version}`);

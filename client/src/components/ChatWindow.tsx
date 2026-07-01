@@ -15,7 +15,7 @@ export function ChatWindow() {
   const contact = users.find(u => u.id === activeUserId);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       <ChatHeader
         username={contact?.username || 'Unknown'}
         peerId={activeUserId}

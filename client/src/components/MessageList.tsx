@@ -15,7 +15,7 @@ export function MessageList() {
   }, [filteredMessages.length]);
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: 12, minHeight: 0 }}>
       {filteredMessages.map(m => (
         <MessageBubble key={m.id} message={m} />
       ))}

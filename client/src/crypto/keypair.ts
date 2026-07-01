@@ -1,4 +1,5 @@
 import { arrayBufferToBase64, base64ToArrayBuffer } from './utils';
+import { publishPublicKey } from '@/api/http';
 
 export async function generateKeyPair(): Promise<CryptoKeyPair> {
   return crypto.subtle.generateKey(
@@ -48,4 +49,20 @@ export async function storePublicKeyBase64(userId: string, base64: string): Prom
 
 export function loadPublicKeyBase64(userId: string): string | null {
   return localStorage.getItem(`publicKey:${userId}`);
+}
+
+export async function rotateKeyPair(currentUserId: string): Promise<string> {
+  console.log('[Crypto] Rotating key pair...');
+
+  const newKeyPair = await generateKeyPair();
+
+  await storePrivateKey(currentUserId, newKeyPair.privateKey);
+
+  const publicKeyBase64 = await exportPublicKey(newKeyPair.publicKey);
+  await storePublicKeyBase64(currentUserId, publicKeyBase64);
+
+  await publishPublicKey(publicKeyBase64);
+
+  console.log('[Crypto] Key pair rotated successfully');
+  return publicKeyBase64;
 }

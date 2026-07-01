@@ -46,3 +46,31 @@ export interface WsQueuedNotification {
 export interface PublicKeyResponse {
   publicKey: string;
 }
+
+export interface PublicKeyVersion {
+  version: number;
+  publicKey: string;
+  createdAt: number;
+}
+
+export interface PublicKeyVersionMeta {
+  version: number;
+  createdAt: number;
+}
+
+export interface PublicKeyVersionsResponse {
+  versions: PublicKeyVersionMeta[];
+}
+
+export interface KeyVersionResponse {
+  publicKey: string;
+  version: number | string;
+}
+
+export interface Conversation {
+  peerId: string;
+  peerUsername: string;
+  lastMessage?: string;
+  lastTimestamp?: number;
+  hasSession: boolean;
+}

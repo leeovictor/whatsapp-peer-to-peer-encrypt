@@ -3,8 +3,25 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { verifyWsToken } from './ws.auth';
 import { handleMessage } from './ws.handlers';
 import { dequeueMessages } from '../messages/messages.store';
+import { ConnectionsMap } from '../types';
 
-const connections = new Map<string, WebSocket>();
+const connections: ConnectionsMap = new Map();
+
+function addConnection(userId: string, ws: WebSocket): void {
+  if (!connections.has(userId)) {
+    connections.set(userId, new Set());
+  }
+  connections.get(userId)!.add(ws);
+}
+
+function removeConnection(userId: string, ws: WebSocket): void {
+  const userConns = connections.get(userId);
+  if (!userConns) return;
+  userConns.delete(ws);
+  if (userConns.size === 0) {
+    connections.delete(userId);
+  }
+}
 
 export function initWebSocketServer(httpServer: HttpServer): void {
   const wss = new WebSocketServer({ server: httpServer });
@@ -26,7 +43,7 @@ export function initWebSocketServer(httpServer: HttpServer): void {
 
     const userId = payload.sub;
     console.log(`[WS] User connected: ${payload.username} (${userId})`);
-    connections.set(userId, ws);
+    addConnection(userId, ws);
 
     const pending = dequeueMessages(userId);
     if (pending.length > 0) {
@@ -48,11 +65,11 @@ export function initWebSocketServer(httpServer: HttpServer): void {
 
     ws.on('close', () => {
       console.log(`[WS] User disconnected: ${userId}`);
-      connections.delete(userId);
+      removeConnection(userId, ws);
     });
 
     ws.on('error', () => {
-      connections.delete(userId);
+      removeConnection(userId, ws);
     });
   });
 }

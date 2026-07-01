@@ -1,6 +1,7 @@
 import { Message } from '@/types';
 
 const MESSAGES_PREFIX = 'messages:';
+const ACTIVE_PEERS_KEY = 'active_peers';
 
 export function saveMessages(
   currentUserId: string,
@@ -31,4 +32,13 @@ export function cachePublicKey(userId: string, publicKey: string): void {
 
 export function getCachedPublicKey(userId: string): string | null {
   return localStorage.getItem(`pubkey_cache:${userId}`);
+}
+
+export function saveActivePeers(currentUserId: string, peerIds: string[]): void {
+  localStorage.setItem(`${ACTIVE_PEERS_KEY}:${currentUserId}`, JSON.stringify(peerIds));
+}
+
+export function loadActivePeers(currentUserId: string): string[] {
+  const stored = localStorage.getItem(`${ACTIVE_PEERS_KEY}:${currentUserId}`);
+  return stored ? JSON.parse(stored) : [];
 }

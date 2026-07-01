@@ -8,6 +8,7 @@ export interface StoredMessage {
   ciphertext: string;
   timestamp: number;
   delivered: boolean;
+  keyVersion?: number;
 }
 
 const messageQueue = new Map<string, StoredMessage[]>();

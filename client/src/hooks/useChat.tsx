@@ -6,17 +6,21 @@ import { useAuth } from './useAuth';
 import { ensureSession } from '@/crypto/session-init';
 import { encrypt, decrypt } from '@/crypto/encryption';
 import { getSession, hasSession } from '@/crypto/session';
-import { saveMessages, loadMessages } from '@/store/storage';
+import { saveMessages, loadMessages, saveActivePeers, loadActivePeers } from '@/store/storage';
+import { renewSession } from '@/crypto/session';
 
 interface ChatState {
   messages: Message[];
+  messagesByPeer: Map<string, Message[]>;
   users: User[];
   activeUserId: string | null;
+  activePeers: string[];
 }
 
 interface ChatContextType extends ChatState {
   sendMessage: (text: string) => void;
   selectUser: (userId: string | null) => void;
+  addConversation: (peerId: string) => void;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -28,18 +32,19 @@ function nextMsgId(): string {
 
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, user } = useAuth();
-  const [state, setState] = useState<ChatState>({
-    messages: [],
-    users: [],
-    activeUserId: null,
-  });
-  const activeUserRef = useRef(user);
-  activeUserRef.current = user;
+  const [messagesByPeer, setMessagesByPeer] = useState<Map<string, Message[]>>(new Map());
+  const [users, setUsers] = useState<User[]>([]);
+  const [activeUserId, setActiveUserId] = useState<string | null>(null);
+  const userRef = useRef(user);
+  userRef.current = user;
+
+  const activePeers = Array.from(messagesByPeer.keys());
+  const messages = activeUserId ? messagesByPeer.get(activeUserId) || [] : [];
 
   useEffect(() => {
     if (!isAuthenticated) return;
     http.fetchUsers().then(res => {
-      setState(prev => ({ ...prev, users: res.users }));
+      setUsers(res.users);
     }).catch(() => {});
   }, [isAuthenticated]);
 
@@ -63,8 +68,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         try {
           plaintext = await decrypt(sessionKey, data.iv, data.ciphertext);
         } catch (err) {
-          console.error('[Chat] Decryption failed:', err);
-          plaintext = '[Mensagem não pôde ser descriptografada]';
+          console.warn('[Chat] Decrypt failed, attempting session renewal...');
+          try {
+            await renewSession(user.id, data.from);
+            const newSessionKey = getSession(data.from)!;
+            plaintext = await decrypt(newSessionKey, data.iv, data.ciphertext);
+          } catch (retryErr) {
+            console.error('[Chat] Decryption failed after renewal:', retryErr);
+            plaintext = '[Mensagem não pôde ser descriptografada]';
+          }
         }
 
         const msg: Message = {
@@ -75,56 +87,101 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           timestamp: data.timestamp,
           direction: 'received',
         };
-        setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
+
+        setMessagesByPeer(prev => {
+          const next = new Map(prev);
+          const existing = next.get(data.from) || [];
+          next.set(data.from, [...existing, msg]);
+          return next;
+        });
       }
     });
     return unsub;
   }, [user]);
 
   useEffect(() => {
-    const currentUser = activeUserRef.current;
-    if (state.activeUserId && currentUser) {
-      saveMessages(currentUser.id, state.activeUserId, state.messages);
+    if (activeUserId && user) {
+      const convMessages = messagesByPeer.get(activeUserId);
+      if (convMessages) {
+        saveMessages(user.id, activeUserId, convMessages);
+      }
     }
-  }, [state.messages, state.activeUserId]);
+  }, [messagesByPeer, activeUserId, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const peerIds = loadActivePeers(user.id);
+    if (peerIds.length === 0) return;
+    setMessagesByPeer(prev => {
+      const next = new Map(prev);
+      for (const peerId of peerIds) {
+        if (!next.has(peerId)) {
+          next.set(peerId, loadMessages(user.id, peerId));
+        }
+      }
+      return next;
+    });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    saveActivePeers(user.id, activePeers);
+  }, [activePeers, user]);
+
+  const addConversation = useCallback((peerId: string) => {
+    setMessagesByPeer(prev => {
+      if (prev.has(peerId)) return prev;
+      const next = new Map(prev);
+      next.set(peerId, []);
+      return next;
+    });
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
-    if (!state.activeUserId || !user || !text.trim()) return;
+    if (!activeUserId || !user || !text.trim()) return;
 
-    const sessionKey = getSession(state.activeUserId);
+    const sessionKey = getSession(activeUserId);
     if (!sessionKey) {
-      console.error('[Chat] No session key for', state.activeUserId);
+      console.error('[Chat] No session key for', activeUserId);
       return;
     }
 
     const { iv, ciphertext } = await encrypt(sessionKey, text.trim());
 
-    socketService.send({ type: 'message', to: state.activeUserId, iv, ciphertext });
+    socketService.send({ type: 'message', to: activeUserId, iv, ciphertext });
 
     const msg: Message = {
       id: nextMsgId(),
       from: user.id,
-      to: state.activeUserId,
+      to: activeUserId,
       plaintext: text.trim(),
       timestamp: Date.now(),
       direction: 'sent',
     };
-    setState(prev => ({ ...prev, messages: [...prev.messages, msg] }));
-  }, [state.activeUserId, user]);
+
+    setMessagesByPeer(prev => {
+      const next = new Map(prev);
+      const existing = next.get(activeUserId) || [];
+      next.set(activeUserId, [...existing, msg]);
+      return next;
+    });
+  }, [activeUserId, user]);
 
   const selectUser = useCallback(async (userId: string | null) => {
     if (userId === null) {
-      setState(prev => ({ ...prev, activeUserId: null, messages: [] }));
+      setActiveUserId(null);
       return;
     }
 
-    setState(prev => ({ ...prev, activeUserId: userId, messages: [] }));
+    setActiveUserId(userId);
 
-    if (user) {
+    if (!messagesByPeer.has(userId) && user) {
       const saved = loadMessages(user.id, userId);
-      if (saved.length > 0) {
-        setState(prev => ({ ...prev, messages: saved }));
-      }
+      setMessagesByPeer(prev => {
+        const next = new Map(prev);
+        next.set(userId, saved);
+        return next;
+      });
     }
 
     try {
@@ -133,10 +190,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error(`[Chat] Failed to establish session with ${userId}:`, err);
     }
-  }, [user]);
+  }, [user, messagesByPeer]);
 
   return (
-    <ChatContext.Provider value={{ ...state, sendMessage, selectUser }}>
+    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, sendMessage, selectUser, addConversation }}>
       {children}
     </ChatContext.Provider>
   );
