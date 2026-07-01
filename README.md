@@ -1,5 +1,7 @@
 # Web Chat E2EE
 
+Projeto de estudo para compreensão de mecanismos de criptografia em aplicações web.
+
 Chat web com criptografia de ponta a ponta (E2EE). O servidor atua apenas como intermediário de transporte — toda criptografia acontece exclusivamente nos navegadores dos clientes.
 
 ## Testar Online
