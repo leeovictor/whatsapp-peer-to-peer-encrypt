@@ -45,6 +45,7 @@ flowchart TD
     B4 --> S2
     A6 --> S3
     S3 --> B6
+```
 
 ## Funcionalidades
 
