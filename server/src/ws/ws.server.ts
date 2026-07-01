@@ -33,6 +33,7 @@ export function initWebSocketServer(httpServer: HttpServer): void {
       ws.send(JSON.stringify({
         type: 'offline_messages',
         messages: pending.map(msg => ({
+          type: 'message' as const,
           from: msg.from,
           iv: msg.iv,
           ciphertext: msg.ciphertext,

@@ -28,7 +28,8 @@ class SocketService {
       this.ws.close();
     }
 
-    this.ws = new WebSocket(`ws://localhost:3001?token=${this.token}`);
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    this.ws = new WebSocket(`${protocol}//${window.location.host}?token=${this.token}`);
 
     this.ws.onopen = () => {
       console.log('[WS] Connected');

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: e2ee-chat
+    env: node
+    region: ohio
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/users
