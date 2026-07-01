@@ -52,16 +52,23 @@ export function MessageInput() {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', padding: 12, borderTop: '1px solid #ccc' }}>
+    <form onSubmit={handleSubmit} className="flex items-center gap-2 px-4 py-3 border-t border-gray-800 bg-gray-900">
       <input
         ref={inputRef}
         type="text"
         value={text}
         onChange={e => handleChange(e.target.value)}
         placeholder="Digite uma mensagem..."
-        style={{ flex: 1, padding: 10, borderRadius: 4, border: '1px solid #ccc' }}
+        className="flex-1 px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors text-sm"
       />
-      <button type="submit" onMouseDown={e => e.preventDefault()} style={{ marginLeft: 8, padding: '10px 16px' }}>Enviar</button>
+      <button
+        type="submit"
+        onMouseDown={e => e.preventDefault()}
+        disabled={!text.trim()}
+        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-colors"
+      >
+        Enviar
+      </button>
     </form>
   );
 }

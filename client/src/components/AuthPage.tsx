@@ -1,25 +1,24 @@
 import { useState } from 'react';
 import { LoginForm } from './LoginForm';
 import { RegisterForm } from './RegisterForm';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 export function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
-  const isMobile = useMediaQuery('(max-width: 768px)');
 
   return (
-    <div style={{
-      maxWidth: 400,
-      margin: isMobile ? '20px auto' : '40px auto',
-      padding: isMobile ? 16 : 20,
-    }}>
-      <h1>Web Chat E2EE</h1>
-      {isLogin ? <LoginForm /> : <RegisterForm />}
-      <p style={{ marginTop: 16 }}>
-        <button onClick={() => setIsLogin(!isLogin)}>
+    <div className="min-h-dvh bg-gray-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-xl border border-gray-700 p-8">
+        <h1 className="text-2xl font-bold text-gray-100 mb-6 text-center">
+          Web Chat E2EE
+        </h1>
+        {isLogin ? <LoginForm /> : <RegisterForm />}
+        <button
+          onClick={() => setIsLogin(!isLogin)}
+          className="text-blue-400 hover:text-blue-300 text-sm text-center w-full mt-4 bg-transparent border-none"
+        >
           {isLogin ? 'Criar conta' : 'Fazer login'}
         </button>
-      </p>
+      </div>
     </div>
   );
 }

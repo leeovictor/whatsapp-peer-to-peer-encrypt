@@ -31,35 +31,29 @@ export function ChatHeader({ username, peerId, showBack, onBack }: ChatHeaderPro
   };
 
   return (
-    <div style={{ padding: 12, borderBottom: '1px solid #ccc', display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-3 bg-gray-900">
       {showBack && (
         <button
           onClick={onBack}
-          style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 0, lineHeight: 1 }}
+          className="text-gray-400 hover:text-gray-200 text-xl bg-transparent border-none p-0 leading-none"
         >
           ←
         </button>
       )}
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 'bold', fontSize: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div className="flex-1 min-w-0">
+        <div className="text-gray-200 font-semibold text-base flex items-center gap-2">
           {isSecure ? '\u{1F512} ' : '\u{1F513} '}
-          {username}
-          <span style={{
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            background: online ? '#4caf50' : '#bbb',
-            display: 'inline-block',
-          }} />
+          <span className="truncate">{username}</span>
+          <span className={`w-2 h-2 rounded-full shrink-0 ${online ? 'bg-green-500' : 'bg-gray-600'}`} />
         </div>
-        <div style={{ fontSize: 11, color: '#888' }}>
+        <div className="text-xs text-gray-500">
           {online ? 'online' : 'offline'}
         </div>
       </div>
       <button
         onClick={handleRenewSession}
         disabled={renewing}
-        style={{ padding: '4px 8px', fontSize: 12, cursor: renewing ? 'wait' : 'pointer', background: 'none', border: '1px solid #ccc', borderRadius: 4 }}
+        className="px-2 py-1.5 text-xs border border-gray-700 rounded-md text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors bg-transparent disabled:opacity-50"
         title="Renovar sessão"
       >
         {renewing ? '...' : '\u{1F504}'}

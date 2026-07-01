@@ -6,7 +6,7 @@ import { useAuth } from './useAuth';
 import { ensureSession } from '@/crypto/session-init';
 import { encrypt, decrypt } from '@/crypto/encryption';
 import { getSession, hasSession } from '@/crypto/session';
-import { saveMessages, loadMessages, saveActivePeers, loadActivePeers } from '@/store/storage';
+import { saveMessages, loadMessages, saveActivePeers, loadActivePeers, clearMessages } from '@/store/storage';
 import { renewSession } from '@/crypto/session';
 import { showInAppNotification } from './useNotifications';
 
@@ -29,6 +29,7 @@ interface ChatContextType extends ChatState {
   getUnreadCount: (peerId: string) => number;
   sendTypingStart: () => void;
   sendTypingStop: () => void;
+  deleteConversation: (peerId: string) => void;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -390,8 +391,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     return conv.filter(m => m.direction === 'received' && m.status !== 'read').length;
   }, [messagesByPeer]);
 
+  const deleteConversation = useCallback((peerId: string) => {
+    if (!user) return;
+    clearMessages(user.id, peerId);
+    setMessagesByPeer(prev => {
+      const next = new Map(prev);
+      next.delete(peerId);
+      return next;
+    });
+    if (activeUserId === peerId) {
+      setActiveUserId(null);
+    }
+  }, [user, activeUserId]);
+
   return (
-    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, onlineUsers, typingUsers, sendMessage, selectUser, addConversation, startConversation, isOnline, getUnreadCount, sendTypingStart, sendTypingStop }}>
+    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, onlineUsers, typingUsers, sendMessage, selectUser, addConversation, startConversation, isOnline, getUnreadCount, sendTypingStart, sendTypingStop, deleteConversation }}>
       {children}
     </ChatContext.Provider>
   );

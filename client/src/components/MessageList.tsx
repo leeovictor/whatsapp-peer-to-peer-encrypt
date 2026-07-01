@@ -15,7 +15,7 @@ export function MessageList() {
   }, [filteredMessages.length]);
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: 12, minHeight: 0 }}>
+    <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0 bg-gray-850">
       {filteredMessages.map(m => (
         <MessageBubble key={m.id} message={m} />
       ))}

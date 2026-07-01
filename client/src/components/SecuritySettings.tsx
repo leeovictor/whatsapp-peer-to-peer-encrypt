@@ -57,36 +57,39 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
   };
 
   return (
-    <div style={{ padding: 16, maxWidth: 500 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>Configurações de Segurança</h2>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer' }}>
+    <div className="p-6 max-w-xl mx-auto text-gray-200">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-gray-100">Configurações de Segurança</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-200 bg-transparent border-none text-lg"
+        >
           Fechar
         </button>
       </div>
 
-      <section style={{ marginBottom: 24 }}>
-        <h3>Chave Pública</h3>
-        <p style={{ fontSize: 13, color: '#666' }}>
+      <section className="mb-6 bg-gray-800 rounded-xl border border-gray-700 p-5">
+        <h3 className="text-sm font-semibold text-gray-200 mb-3">Chave Pública</h3>
+        <p className="text-sm text-gray-400 mb-3">
           Gerada em: {keyGeneratedAt || 'Desconhecido'}
         </p>
         <button
           onClick={handleRotate}
           disabled={rotating}
-          style={{ padding: '8px 16px', cursor: rotating ? 'wait' : 'pointer' }}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
         >
           {rotating ? 'Rotacionando...' : 'Rotacionar Chaves'}
         </button>
       </section>
 
-      <section style={{ marginBottom: 24 }}>
-        <h3>Versões da Chave</h3>
+      <section className="mb-6 bg-gray-800 rounded-xl border border-gray-700 p-5">
+        <h3 className="text-sm font-semibold text-gray-200 mb-3">Versões da Chave</h3>
         {versions.length === 0 ? (
-          <p style={{ fontSize: 13, color: '#888' }}>Nenhuma versão encontrada</p>
+          <p className="text-sm text-gray-500">Nenhuma versão encontrada</p>
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          <ul className="list-none p-0 m-0">
             {versions.map(v => (
-              <li key={v.version} style={{ padding: '4px 0', fontSize: 13 }}>
+              <li key={v.version} className="py-1 text-sm text-gray-400">
                 v{v.version} — {new Date(v.createdAt).toLocaleString()}
               </li>
             ))}
@@ -94,21 +97,21 @@ export function SecuritySettings({ onClose }: SecuritySettingsProps) {
         )}
       </section>
 
-      <section>
-        <h3>Sessões Ativas ({sessions.length})</h3>
+      <section className="bg-gray-800 rounded-xl border border-gray-700 p-5">
+        <h3 className="text-sm font-semibold text-gray-200 mb-3">Sessões Ativas ({sessions.length})</h3>
         {sessions.length === 0 ? (
-          <p style={{ fontSize: 13, color: '#888' }}>Nenhuma sessão ativa</p>
+          <p className="text-sm text-gray-500">Nenhuma sessão ativa</p>
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          <ul className="list-none p-0 m-0">
             {sessions.map(s => (
-              <li key={s.peerId} style={{ padding: '8px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f0f0f0' }}>
-                <span>
+              <li key={s.peerId} className="py-3 flex items-center justify-between border-b border-gray-700/50 last:border-none">
+                <span className="text-gray-300 text-sm">
                   {s.active ? '\u{1F512} ' : '\u{1F513} '}
                   {s.peerId.substring(0, 8)}
                 </span>
                 <button
                   onClick={() => handleRenewSession(s.peerId)}
-                  style={{ padding: '4px 8px', fontSize: 12, cursor: 'pointer' }}
+                  className="px-3 py-1.5 text-xs border border-gray-600 rounded-md text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors bg-transparent"
                 >
                   Renovar
                 </button>

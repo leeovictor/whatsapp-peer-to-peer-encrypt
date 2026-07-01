@@ -12,27 +12,29 @@ export function ChatPage() {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [showSettings, setShowSettings] = useState(false);
 
-  const headerStyle = {
-    padding: 12,
-    borderBottom: '1px solid #ccc' as const,
-    display: 'flex' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
-  };
-
   const userBar = (
-    <div style={headerStyle}>
-      <strong>{user?.username}</strong>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => setShowSettings(true)}>{'\u{2699}'}</button>
-        <button onClick={logout}>Sair</button>
+    <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between bg-gray-900">
+      <span className="text-gray-200 font-semibold">{user?.username}</span>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setShowSettings(true)}
+          className="text-gray-400 hover:text-gray-200 transition-colors bg-transparent border-none text-lg"
+        >
+          {'\u{2699}'}
+        </button>
+        <button
+          onClick={logout}
+          className="text-gray-400 hover:text-red-400 transition-colors bg-transparent border-none text-sm"
+        >
+          Sair
+        </button>
       </div>
     </div>
   );
 
   if (showSettings) {
     return (
-      <div style={{ height: '100dvh', overflowY: 'auto' }}>
+      <div className="h-dvh overflow-y-auto bg-gray-950">
         <SecuritySettings onClose={() => setShowSettings(false)} />
       </div>
     );
@@ -40,14 +42,14 @@ export function ChatPage() {
 
   if (isMobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden' }}>
+      <div className="flex flex-col h-dvh overflow-hidden bg-gray-950">
         {userBar}
         {activeUserId ? (
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <div className="flex-1 min-h-0 flex flex-col bg-gray-850">
             <ChatWindow />
           </div>
         ) : (
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div className="flex-1 overflow-y-auto">
             <Sidebar />
           </div>
         )}
@@ -56,12 +58,12 @@ export function ChatPage() {
   }
 
   return (
-    <div style={{ display: 'flex', height: '100dvh' }}>
-      <div style={{ width: 300, borderRight: '1px solid #ccc', display: 'flex', flexDirection: 'column' }}>
+    <div className="flex h-dvh bg-gray-950">
+      <div className="w-80 flex flex-col bg-gray-900 border-r border-gray-800">
         {userBar}
         <Sidebar />
       </div>
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div className="flex-1 min-h-0 flex flex-col bg-gray-850">
         <ChatWindow />
       </div>
     </div>

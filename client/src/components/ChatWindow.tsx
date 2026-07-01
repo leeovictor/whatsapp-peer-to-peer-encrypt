@@ -10,13 +10,17 @@ export function ChatWindow() {
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   if (!activeUserId) {
-    return <div style={{ padding: 16, color: '#888' }}>Selecione um contato</div>;
+    return (
+      <div className="flex-1 flex items-center justify-center text-gray-500">
+        Selecione um contato
+      </div>
+    );
   }
 
   const isTyping = typingUsers.has(activeUserId);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div className="flex-1 flex flex-col overflow-hidden bg-gray-850">
       <ChatHeader
         username={contact?.username || 'Unknown'}
         peerId={activeUserId}
@@ -25,7 +29,7 @@ export function ChatWindow() {
       />
       <MessageList />
       {isTyping && (
-        <div style={{ padding: '4px 16px 8px', fontSize: 13, color: '#666', fontStyle: 'italic' }}>
+        <div className="px-4 pb-2 text-xs text-gray-500 italic">
           {contact?.username || 'Usuário'} está digitando...
         </div>
       )}
