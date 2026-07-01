@@ -6,6 +6,8 @@ import { authRouter } from './auth/auth.router';
 import { usersRouter } from './users/users.router';
 import { keysRouter } from './keys/keys.router';
 import { messagesRouter } from './messages/messages.router';
+import { notificationsRouter } from './notifications/notifications.router';
+import { initVapidKeys } from './notifications/vapid.store';
 import { initWebSocketServer } from './ws/ws.server';
 
 const app = express();
@@ -22,6 +24,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api', keysRouter);
 app.use('/api/messages', messagesRouter);
+app.use('/api/notifications', notificationsRouter);
 
 const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
 app.use(express.static(clientDist));
@@ -29,6 +32,14 @@ app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
 
 const httpServer = http.createServer(app);
 initWebSocketServer(httpServer);
+
+(async () => {
+  try {
+    await initVapidKeys();
+  } catch (err) {
+    console.error('[Server] Failed to init VAPID keys:', err);
+  }
+})();
 
 httpServer.listen(PORT, () => {
   console.log(`[Server] Running on http://localhost:${PORT}`);

@@ -39,6 +39,15 @@ export const fetchPublicKey = (userId: string) =>
 export const fetchOfflineMessages = () =>
   request<{ messages: unknown[] }>('GET', '/messages');
 
+export const fetchVapidPublicKey = () =>
+  request<{ publicKey: string }>('GET', '/notifications/vapid-public-key');
+
+export const subscribePush = (subscription: PushSubscriptionJSON) =>
+  request<{ success: boolean }>('POST', '/notifications/subscribe', subscription);
+
+export const unsubscribePush = (endpoint: string) =>
+  request<{ success: boolean }>('POST', '/notifications/unsubscribe', { endpoint });
+
 export const fetchPublicKeyVersions = (userId: string) =>
   request<{ versions: Array<{ version: number; createdAt: number }> }>('GET', `/users/${userId}/key/versions`);
 

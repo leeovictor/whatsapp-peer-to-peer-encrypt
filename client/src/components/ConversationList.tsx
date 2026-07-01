@@ -2,7 +2,7 @@ import { useChat } from '@/hooks/useChat';
 import { hasSession } from '@/crypto/session';
 
 export function ConversationList() {
-  const { activePeers, activeUserId, selectUser, users, isOnline } = useChat();
+  const { activePeers, activeUserId, selectUser, users, isOnline, getUnreadCount } = useChat();
 
   if (activePeers.length === 0) {
     return (
@@ -22,6 +22,8 @@ export function ConversationList() {
           const contact = users.find(u => u.id === peerId);
           const isSecure = hasSession(peerId);
           const online = isOnline(peerId);
+          const unread = getUnreadCount(peerId);
+          const isActive = activeUserId === peerId;
           return (
             <li
               key={peerId}
@@ -29,7 +31,7 @@ export function ConversationList() {
               style={{
                 padding: '8px 12px',
                 cursor: 'pointer',
-                background: activeUserId === peerId ? '#e0e0e0' : 'transparent',
+                background: isActive ? '#e0e0e0' : 'transparent',
                 borderBottom: '1px solid #f0f0f0',
                 display: 'flex',
                 alignItems: 'center',
@@ -51,7 +53,21 @@ export function ConversationList() {
                   }} />
                 )}
               </div>
-              <span>{contact?.username || peerId.substring(0, 8)}</span>
+              <span style={{ flex: 1 }}>{contact?.username || peerId.substring(0, 8)}</span>
+              {!isActive && unread > 0 && (
+                <span style={{
+                  background: '#25d366',
+                  color: '#fff',
+                  borderRadius: 12,
+                  padding: '2px 8px',
+                  fontSize: 11,
+                  fontWeight: 'bold',
+                  minWidth: 20,
+                  textAlign: 'center',
+                }}>
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
             </li>
           );
         })}

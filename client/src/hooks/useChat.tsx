@@ -8,6 +8,7 @@ import { encrypt, decrypt } from '@/crypto/encryption';
 import { getSession, hasSession } from '@/crypto/session';
 import { saveMessages, loadMessages, saveActivePeers, loadActivePeers } from '@/store/storage';
 import { renewSession } from '@/crypto/session';
+import { showInAppNotification } from './useNotifications';
 
 interface ChatState {
   messages: Message[];
@@ -23,6 +24,7 @@ interface ChatContextType extends ChatState {
   selectUser: (userId: string | null) => void;
   addConversation: (peerId: string) => void;
   isOnline: (userId: string) => boolean;
+  getUnreadCount: (peerId: string) => number;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -141,6 +143,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       socketService.send({ type: 'read_receipt', to: data.from, timestamp: Date.now() });
       setMessagesByPeer(prev => updateMessageStatus(prev, data.from, m => m.direction === 'received' && m.status !== 'read', 'read'));
     }
+
+    showInAppNotification('New message', 'You have a new encrypted message');
   }
 
   function handleDeliveryAck(data: WsDeliveryAck) {
@@ -279,8 +283,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const isOnline = useCallback((userId: string) => onlineUsers.has(userId), [onlineUsers]);
 
+  const getUnreadCount = useCallback((peerId: string) => {
+    const conv = messagesByPeer.get(peerId);
+    if (!conv) return 0;
+    return conv.filter(m => m.direction === 'received' && m.status !== 'read').length;
+  }, [messagesByPeer]);
+
   return (
-    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, onlineUsers, sendMessage, selectUser, addConversation, isOnline }}>
+    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, onlineUsers, sendMessage, selectUser, addConversation, isOnline, getUnreadCount }}>
       {children}
     </ChatContext.Provider>
   );

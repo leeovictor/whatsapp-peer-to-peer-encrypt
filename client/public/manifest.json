@@ -1,0 +1,10 @@
+{
+  "name": "Web Chat E2EE",
+  "short_name": "E2EE Chat",
+  "description": "Peer-to-peer encrypted chat",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "icons": []
+}

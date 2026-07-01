@@ -1,6 +1,7 @@
 import { WebSocket } from 'ws';
 import { WsError, WsMessage, WsOutgoingMessage, WsDeliveryAck, WsReadReceipt, WsQueuedNotification, ConnectionsMap } from '../types';
 import { enqueueMessage } from '../messages/messages.store';
+import { sendPushNotification } from '../notifications/notifications.service';
 
 function isValidMessage(data: unknown): data is WsMessage {
   return (
@@ -103,6 +104,8 @@ function handleChatMessage(ws: WebSocket, parsed: WsMessage, userId: string, con
       to: parsed.to,
     };
     ws.send(JSON.stringify(queued));
+
+    sendPushNotification(parsed.to, 'New message', 'You have a new encrypted message');
   }
 }
 

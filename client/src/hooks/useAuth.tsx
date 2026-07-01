@@ -11,6 +11,7 @@ import {
   loadPublicKeyBase64,
 } from '@/crypto/keypair';
 import { clearSessions } from '@/crypto/session';
+import { initPushNotifications, unsubscribePushNotifications } from './useNotifications';
 
 interface AuthState {
   token: string | null;
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ token: res.token, user: res.user });
     await ensureKeyPair(res.user.id);
     connectSocket(res.token);
+    initPushNotifications();
   }, [connectSocket]);
 
   const register = useCallback(async (username: string, password: string) => {
@@ -77,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ token: res.token, user: res.user });
     await ensureKeyPair(res.user.id);
     connectSocket(res.token);
+    initPushNotifications();
   }, [connectSocket]);
 
   const logout = useCallback(() => {
@@ -85,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setState({ token: null, user: null });
+    unsubscribePushNotifications();
   }, []);
 
   useEffect(() => {
