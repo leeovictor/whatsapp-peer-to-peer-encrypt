@@ -10,42 +10,43 @@ Chat web com criptografia de ponta a ponta (E2EE). O servidor atua apenas como i
 
 ## Funcionamento
 
-```mermaid
-flowchart TD
-    subgraph BA["🧑 Browser A"]
-        A1["1. Gera KeyPair ECDH P-256"]
-        A2["2. Chave privada → localStorage"]
-        A3["3. Chave pública → servidor"]
-        A4["4. Busca pubKey do peer B"]
-        A5["5. ECDH(privA + pubB) → AES-256"]
-        A6["6. AES-GCM('Olá') → {iv, ciphertext}"]
-    end
-
-    subgraph BB["🧑 Browser B"]
-        B1["1. Gera KeyPair ECDH P-256"]
-        B2["2. Chave privada → localStorage"]
-        B3["3. Chave pública → servidor"]
-        B4["4. Busca pubKey do peer A"]
-        B5["5. ECDH(privB + pubA) → AES-256"]
-        B6["6. AES-GCM decrypt → 'Olá'"]
-    end
-
-    subgraph S["☁️ Servidor (dumb pipe)"]
-        direction TB
-        S1["Autenticação JWT"]
-        S2["Armazena chaves públicas"]
-        S3["Roteia mensagens via WS"]
-        S4["Fila de mensagens offline"]
-        S5["❌ NUNCA conhece:<br/>chaves privadas / sessão AES / conteúdo"]
-    end
-
-    A3 --> S2
-    B3 --> S2
-    A4 --> S2
-    B4 --> S2
-    A6 --> S3
-    S3 --> B6
 ```
+┌── Browser A ──────────────────┐    ┌── Browser B ──────────────────┐
+│                                │    │                                │
+│  1. Gera KeyPair ECDH P-256    │    │  1. Gera KeyPair ECDH P-256    │
+│  2. Privada → localStorage     │    │  2. Privada → localStorage     │
+│  3. Pública → servidor         │    │  3. Pública → servidor         │
+│                                │    │                                │
+│  4. Busca chave pública do     │    │  4. Busca chave pública do     │
+│     peer B no servidor         │    │     peer A no servidor         │
+│  5. ECDH(privA + pubB)         │    │  5. ECDH(privB + pubA)         │
+│     → chave AES-GCM 256 bits   │    │     → chave AES-GCM 256 bits   │
+│  6. AES-GCM("Olá")             │    │  6. AES-GCM("Olá")             │
+│     → { iv, ciphertext }       │    │     → { iv, ciphertext }       │
+│                                │    │                                │
+└──────────┬─────────────────────┘    └──────────┬─────────────────────┘
+           │                                     │
+           │        ┌─────────────────┐          │
+           │        │   Servidor       │          │
+           ├───────►│ (dumb pipe)      │◄─────────┤
+           │        │                  │          │
+           │        │ - Autenticação   │          │
+           │        │ - Armazena chaves│          │
+           │        │   públicas       │          │
+           │        │ - Roteia         │          │
+           │        │   mensagens via   │          │
+           │        │   WebSocket       │          │
+           │        │ - Fila offline   │          │
+           │        │                  │          │
+           │        │ NUNCA conhece:   │          │
+           │        │ - Chaves privadas│          │
+           │        │ - Chaves de      │          │
+           │        │   sessão (AES)   │          │
+           │        │ - Conteúdo das   │          │
+           │        │   mensagens      │          │
+           │        └─────────────────┘          │
+           │                                     │
+           └─────────────────────────────────────┘
 
 ## Funcionalidades
 
