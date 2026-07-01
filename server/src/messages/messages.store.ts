@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export interface StoredMessage {
   id: string;
+  clientMessageId: string;
   from: string;
   to: string;
   iv: string;

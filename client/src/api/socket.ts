@@ -1,6 +1,6 @@
-import { WsIncomingMessage, WsError, WsQueuedNotification } from '@/types';
+import { WsIncomingMessage, WsDeliveryAck, WsReadReceipt, WsStatus, WsStatusBatch, WsError, WsQueuedNotification } from '@/types';
 
-type MessageHandler = (msg: WsIncomingMessage | WsError | WsQueuedNotification) => void;
+type MessageHandler = (msg: WsIncomingMessage | WsDeliveryAck | WsReadReceipt | WsStatus | WsStatusBatch | WsError | WsQueuedNotification) => void;
 
 class SocketService {
   private ws: WebSocket | null = null;

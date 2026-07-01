@@ -3,6 +3,8 @@ export interface User {
   username: string;
 }
 
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read';
+
 export interface Message {
   id: string;
   from: string;
@@ -10,6 +12,7 @@ export interface Message {
   plaintext: string;
   timestamp: number;
   direction: 'sent' | 'received';
+  status: MessageStatus;
 }
 
 export interface AuthResponse {
@@ -23,6 +26,7 @@ export interface WsIncomingMessage {
   iv: string;
   ciphertext: string;
   timestamp: number;
+  messageId: string;
 }
 
 export interface WsOutgoingMessage {
@@ -30,6 +34,32 @@ export interface WsOutgoingMessage {
   to: string;
   iv: string;
   ciphertext: string;
+  messageId: string;
+}
+
+export interface WsDeliveryAck {
+  type: 'delivery_ack';
+  messageId: string;
+  to: string;
+  timestamp: number;
+}
+
+export interface WsReadReceipt {
+  type: 'read_receipt';
+  from: string;
+  to: string;
+  timestamp: number;
+}
+
+export interface WsStatus {
+  type: 'status';
+  userId: string;
+  online: boolean;
+}
+
+export interface WsStatusBatch {
+  type: 'status_batch';
+  statuses: Array<{ userId: string; online: boolean }>;
 }
 
 export interface WsError {

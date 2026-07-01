@@ -23,6 +23,7 @@ export interface WsMessage {
   to: string;
   iv: string;
   ciphertext: string;
+  messageId: string;
 }
 
 export interface WsOutgoingMessage {
@@ -31,6 +32,32 @@ export interface WsOutgoingMessage {
   iv: string;
   ciphertext: string;
   timestamp: number;
+  messageId: string;
+}
+
+export interface WsDeliveryAck {
+  type: 'delivery_ack';
+  messageId: string;
+  to: string;
+  timestamp: number;
+}
+
+export interface WsReadReceipt {
+  type: 'read_receipt';
+  from: string;
+  to: string;
+  timestamp: number;
+}
+
+export interface WsStatus {
+  type: 'status';
+  userId: string;
+  online: boolean;
+}
+
+export interface WsStatusBatch {
+  type: 'status_batch';
+  statuses: Array<{ userId: string; online: boolean }>;
 }
 
 export interface WsError {
@@ -51,6 +78,7 @@ export interface PublicKeyVersion {
 
 export interface StoredMessage {
   id: string;
+  clientMessageId: string;
   from: string;
   to: string;
   iv: string;
@@ -68,6 +96,7 @@ export interface WsQueuedNotification {
 export interface WsOfflineMessages {
   type: 'offline_messages';
   messages: Array<{
+    messageId: string;
     from: string;
     iv: string;
     ciphertext: string;

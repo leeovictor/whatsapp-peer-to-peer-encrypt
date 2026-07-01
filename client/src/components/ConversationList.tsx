@@ -2,7 +2,7 @@ import { useChat } from '@/hooks/useChat';
 import { hasSession } from '@/crypto/session';
 
 export function ConversationList() {
-  const { activePeers, activeUserId, selectUser, users } = useChat();
+  const { activePeers, activeUserId, selectUser, users, isOnline } = useChat();
 
   if (activePeers.length === 0) {
     return (
@@ -21,6 +21,7 @@ export function ConversationList() {
         {activePeers.map(peerId => {
           const contact = users.find(u => u.id === peerId);
           const isSecure = hasSession(peerId);
+          const online = isOnline(peerId);
           return (
             <li
               key={peerId}
@@ -35,7 +36,21 @@ export function ConversationList() {
                 gap: 8,
               }}
             >
-              <span>{isSecure ? '\u{1F512}' : '\u{1F513}'}</span>
+              <div style={{ position: 'relative' }}>
+                <span style={{ fontSize: 18 }}>{isSecure ? '\u{1F512}' : '\u{1F513}'}</span>
+                {online && (
+                  <span style={{
+                    position: 'absolute',
+                    bottom: -2,
+                    right: -4,
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    background: '#4caf50',
+                    border: '2px solid #fff',
+                  }} />
+                )}
+              </div>
               <span>{contact?.username || peerId.substring(0, 8)}</span>
             </li>
           );

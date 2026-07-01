@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { hasSession } from '@/crypto/session';
+import { useChat } from '@/hooks/useChat';
 import { useAuth } from '@/hooks/useAuth';
 import { renewSession } from '@/crypto/session';
 
@@ -12,8 +13,10 @@ interface ChatHeaderProps {
 
 export function ChatHeader({ username, peerId, showBack, onBack }: ChatHeaderProps) {
   const { user } = useAuth();
+  const { isOnline } = useChat();
   const [renewing, setRenewing] = useState(false);
   const isSecure = hasSession(peerId);
+  const online = isOnline(peerId);
 
   const handleRenewSession = async () => {
     if (!user) return;
@@ -37,10 +40,22 @@ export function ChatHeader({ username, peerId, showBack, onBack }: ChatHeaderPro
           ←
         </button>
       )}
-      <span style={{ fontWeight: 'bold', fontSize: 16, flex: 1 }}>
-        {isSecure ? '\u{1F512} ' : '\u{1F513} '}
-        {username}
-      </span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 'bold', fontSize: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+          {isSecure ? '\u{1F512} ' : '\u{1F513} '}
+          {username}
+          <span style={{
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: online ? '#4caf50' : '#bbb',
+            display: 'inline-block',
+          }} />
+        </div>
+        <div style={{ fontSize: 11, color: '#888' }}>
+          {online ? 'online' : 'offline'}
+        </div>
+      </div>
       <button
         onClick={handleRenewSession}
         disabled={renewing}

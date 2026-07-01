@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { socketService } from '@/api/socket';
 import * as http from '@/api/http';
-import { Message, User, WsIncomingMessage, WsError, WsQueuedNotification } from '@/types';
+import { Message, User, MessageStatus, WsIncomingMessage, WsDeliveryAck, WsReadReceipt, WsStatus, WsStatusBatch, WsError, WsQueuedNotification } from '@/types';
 import { useAuth } from './useAuth';
 import { ensureSession } from '@/crypto/session-init';
 import { encrypt, decrypt } from '@/crypto/encryption';
@@ -15,12 +15,14 @@ interface ChatState {
   users: User[];
   activeUserId: string | null;
   activePeers: string[];
+  onlineUsers: Set<string>;
 }
 
 interface ChatContextType extends ChatState {
   sendMessage: (text: string) => void;
   selectUser: (userId: string | null) => void;
   addConversation: (peerId: string) => void;
+  isOnline: (userId: string) => boolean;
 }
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -30,13 +32,29 @@ function nextMsgId(): string {
   return `msg-${++msgCounter}-${Date.now()}`;
 }
 
+function updateMessageStatus(
+  messagesByPeer: Map<string, Message[]>,
+  peerId: string,
+  predicate: (m: Message) => boolean,
+  newStatus: MessageStatus
+): Map<string, Message[]> {
+  const next = new Map(messagesByPeer);
+  const conv = next.get(peerId);
+  if (!conv) return next;
+  next.set(peerId, conv.map(m => predicate(m) ? { ...m, status: newStatus } : m));
+  return next;
+}
+
 export function ChatProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated, user } = useAuth();
   const [messagesByPeer, setMessagesByPeer] = useState<Map<string, Message[]>>(new Map());
   const [users, setUsers] = useState<User[]>([]);
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const userRef = useRef(user);
   userRef.current = user;
+  const activeUserIdRef = useRef(activeUserId);
+  activeUserIdRef.current = activeUserId;
 
   const activePeers = Array.from(messagesByPeer.keys());
   const messages = activeUserId ? messagesByPeer.get(activeUserId) || [] : [];
@@ -50,54 +68,108 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) return;
-    const unsub = socketService.onMessage(async (data: WsIncomingMessage | WsError | WsQueuedNotification) => {
-      if (data.type === 'message') {
-        if (!hasSession(data.from)) {
-          try {
-            await ensureSession(user.id, data.from);
-          } catch (err) {
-            console.error('[Chat] Cannot decrypt: no session with', data.from, err);
-            return;
-          }
-        }
-
-        const sessionKey = getSession(data.from);
-        if (!sessionKey) return;
-
-        let plaintext: string;
-        try {
-          plaintext = await decrypt(sessionKey, data.iv, data.ciphertext);
-        } catch (err) {
-          console.warn('[Chat] Decrypt failed, attempting session renewal...');
-          try {
-            await renewSession(user.id, data.from);
-            const newSessionKey = getSession(data.from)!;
-            plaintext = await decrypt(newSessionKey, data.iv, data.ciphertext);
-          } catch (retryErr) {
-            console.error('[Chat] Decryption failed after renewal:', retryErr);
-            plaintext = '[Mensagem não pôde ser descriptografada]';
-          }
-        }
-
-        const msg: Message = {
-          id: nextMsgId(),
-          from: data.from,
-          to: user.id,
-          plaintext,
-          timestamp: data.timestamp,
-          direction: 'received',
-        };
-
-        setMessagesByPeer(prev => {
-          const next = new Map(prev);
-          const existing = next.get(data.from) || [];
-          next.set(data.from, [...existing, msg]);
-          return next;
-        });
+    const unsub = socketService.onMessage(async (data: WsIncomingMessage | WsDeliveryAck | WsReadReceipt | WsStatus | WsStatusBatch | WsError | WsQueuedNotification) => {
+      switch (data.type) {
+        case 'message':
+          await handleIncomingMessage(data as WsIncomingMessage, user);
+          break;
+        case 'delivery_ack':
+          handleDeliveryAck(data as WsDeliveryAck);
+          break;
+        case 'read_receipt':
+          handleReadReceipt(data as WsReadReceipt);
+          break;
+        case 'status':
+          handleStatus(data as WsStatus);
+          break;
+        case 'status_batch':
+          handleStatusBatch(data as WsStatusBatch);
+          break;
       }
     });
     return unsub;
   }, [user]);
+
+  async function handleIncomingMessage(data: WsIncomingMessage, currentUser: User) {
+    if (!hasSession(data.from)) {
+      try {
+        await ensureSession(currentUser.id, data.from);
+      } catch (err) {
+        console.error('[Chat] Cannot decrypt: no session with', data.from, err);
+        return;
+      }
+    }
+
+    const sessionKey = getSession(data.from);
+    if (!sessionKey) return;
+
+    let plaintext: string;
+    try {
+      plaintext = await decrypt(sessionKey, data.iv, data.ciphertext);
+    } catch (err) {
+      console.warn('[Chat] Decrypt failed, attempting session renewal...');
+      try {
+        await renewSession(currentUser.id, data.from);
+        const newSessionKey = getSession(data.from)!;
+        plaintext = await decrypt(newSessionKey, data.iv, data.ciphertext);
+      } catch (retryErr) {
+        console.error('[Chat] Decryption failed after renewal:', retryErr);
+        plaintext = '[Mensagem não pôde ser descriptografada]';
+      }
+    }
+
+    const msg: Message = {
+      id: data.messageId,
+      from: data.from,
+      to: currentUser.id,
+      plaintext,
+      timestamp: data.timestamp,
+      direction: 'received',
+      status: 'delivered',
+    };
+
+    setMessagesByPeer(prev => {
+      const next = new Map(prev);
+      const existing = next.get(data.from) || [];
+      if (existing.some(m => m.id === data.messageId)) return prev;
+      const updated = [...existing, msg];
+      next.set(data.from, updated);
+      return next;
+    });
+
+    if (activeUserIdRef.current === data.from) {
+      socketService.send({ type: 'read_receipt', to: data.from, timestamp: Date.now() });
+      setMessagesByPeer(prev => updateMessageStatus(prev, data.from, m => m.direction === 'received' && m.status !== 'read', 'read'));
+    }
+  }
+
+  function handleDeliveryAck(data: WsDeliveryAck) {
+    setMessagesByPeer(prev => updateMessageStatus(prev, data.to, m => m.id === data.messageId, 'delivered'));
+  }
+
+  function handleReadReceipt(data: WsReadReceipt) {
+    setMessagesByPeer(prev => updateMessageStatus(prev, data.from, m => m.direction === 'sent' && m.status !== 'read', 'read'));
+  }
+
+  function handleStatus(data: WsStatus) {
+    setOnlineUsers(prev => {
+      const next = new Set(prev);
+      if (data.online) next.add(data.userId);
+      else next.delete(data.userId);
+      return next;
+    });
+  }
+
+  function handleStatusBatch(data: WsStatusBatch) {
+    setOnlineUsers(prev => {
+      const next = new Set(prev);
+      for (const s of data.statuses) {
+        if (s.online) next.add(s.userId);
+        else next.delete(s.userId);
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (activeUserId && user) {
@@ -147,16 +219,18 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
 
     const { iv, ciphertext } = await encrypt(sessionKey, text.trim());
+    const msgId = nextMsgId();
 
-    socketService.send({ type: 'message', to: activeUserId, iv, ciphertext });
+    socketService.send({ type: 'message', to: activeUserId, iv, ciphertext, messageId: msgId });
 
     const msg: Message = {
-      id: nextMsgId(),
+      id: msgId,
       from: user.id,
       to: activeUserId,
       plaintext: text.trim(),
       timestamp: Date.now(),
       direction: 'sent',
+      status: 'sent',
     };
 
     setMessagesByPeer(prev => {
@@ -184,6 +258,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       });
     }
 
+    if (user) {
+      setMessagesByPeer(prev => {
+        const conv = prev.get(userId);
+        if (!conv) return prev;
+        const hasUnread = conv.some(m => m.direction === 'received' && m.status !== 'read');
+        if (!hasUnread) return prev;
+        socketService.send({ type: 'read_receipt', to: userId, timestamp: Date.now() });
+        return updateMessageStatus(prev, userId, m => m.direction === 'received' && m.status !== 'read', 'read');
+      });
+    }
+
     try {
       await ensureSession(user!.id, userId);
       console.log(`[Chat] Session established with ${userId}`);
@@ -192,8 +277,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [user, messagesByPeer]);
 
+  const isOnline = useCallback((userId: string) => onlineUsers.has(userId), [onlineUsers]);
+
   return (
-    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, sendMessage, selectUser, addConversation }}>
+    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, onlineUsers, sendMessage, selectUser, addConversation, isOnline }}>
       {children}
     </ChatContext.Provider>
   );

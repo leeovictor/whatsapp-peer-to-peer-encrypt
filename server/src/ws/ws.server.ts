@@ -1,9 +1,9 @@
 import { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { verifyWsToken } from './ws.auth';
-import { handleMessage } from './ws.handlers';
+import { handleMessage, sendDeliveryAck } from './ws.handlers';
 import { dequeueMessages } from '../messages/messages.store';
-import { ConnectionsMap } from '../types';
+import { ConnectionsMap, WsStatus, WsStatusBatch } from '../types';
 
 const connections: ConnectionsMap = new Map();
 
@@ -21,6 +21,25 @@ function removeConnection(userId: string, ws: WebSocket): void {
   if (userConns.size === 0) {
     connections.delete(userId);
   }
+}
+
+function broadcastToAll(data: unknown, excludeUserId?: string): void {
+  for (const [uid, conns] of connections) {
+    if (uid === excludeUserId) continue;
+    for (const conn of conns) {
+      if (conn.readyState === WebSocket.OPEN) {
+        conn.send(JSON.stringify(data));
+      }
+    }
+  }
+}
+
+function buildStatusBatch(): WsStatusBatch {
+  const statuses: Array<{ userId: string; online: boolean }> = [];
+  for (const userId of connections.keys()) {
+    statuses.push({ userId, online: true });
+  }
+  return { type: 'status_batch', statuses };
 }
 
 export function initWebSocketServer(httpServer: HttpServer): void {
@@ -43,6 +62,8 @@ export function initWebSocketServer(httpServer: HttpServer): void {
 
     const userId = payload.sub;
     console.log(`[WS] User connected: ${payload.username} (${userId})`);
+
+    const wasOffline = !connections.has(userId) || connections.get(userId)!.size === 0;
     addConnection(userId, ws);
 
     const pending = dequeueMessages(userId);
@@ -51,12 +72,24 @@ export function initWebSocketServer(httpServer: HttpServer): void {
         type: 'offline_messages',
         messages: pending.map(msg => ({
           type: 'message' as const,
+          messageId: msg.clientMessageId,
           from: msg.from,
           iv: msg.iv,
           ciphertext: msg.ciphertext,
           timestamp: msg.timestamp,
         })),
       }));
+
+      for (const msg of pending) {
+        sendDeliveryAck(msg.clientMessageId, msg.from, msg.to, msg.timestamp, connections);
+      }
+    }
+
+    ws.send(JSON.stringify(buildStatusBatch()));
+
+    if (wasOffline) {
+      const status: WsStatus = { type: 'status', userId, online: true };
+      broadcastToAll(status, userId);
     }
 
     ws.on('message', (data: Buffer) => {
@@ -66,10 +99,20 @@ export function initWebSocketServer(httpServer: HttpServer): void {
     ws.on('close', () => {
       console.log(`[WS] User disconnected: ${userId}`);
       removeConnection(userId, ws);
+
+      if (!connections.has(userId)) {
+        const status: WsStatus = { type: 'status', userId, online: false };
+        broadcastToAll(status);
+      }
     });
 
     ws.on('error', () => {
       removeConnection(userId, ws);
+
+      if (!connections.has(userId)) {
+        const status: WsStatus = { type: 'status', userId, online: false };
+        broadcastToAll(status);
+      }
     });
   });
 }
