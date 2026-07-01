@@ -34,11 +34,10 @@ SW.addEventListener('push', (event) => {
 
   const options: NotificationOptions = {
     body: data.body,
-    icon: '/manifest.json',
-    badge: '/manifest.json',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
     vibrate: [200, 100, 200],
     tag: 'new-message',
-    requireInteraction: true,
   };
 
   event.waitUntil(SW.registration.showNotification(data.title, options));
@@ -47,17 +46,17 @@ SW.addEventListener('push', (event) => {
 SW.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
+  const appUrl = SW.registration.scope;
+
   event.waitUntil(
     clients
       .matchAll({ type: 'window', includeUncontrolled: true })
       .then((windowClients) => {
-        const existing = windowClients.find(
-          (client) => 'focus' in client,
-        );
+        const existing = windowClients.find((client) => 'focus' in client);
         if (existing) {
           return existing.focus();
         }
-        return clients.openWindow('/');
+        return clients.openWindow(appUrl);
       }),
   );
 });

@@ -15,12 +15,18 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export async function initPushNotifications(): Promise<void> {
   if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-    console.log('[Push] Notifications not supported');
+    console.log('[Push] Notifications not supported in this browser');
     return;
   }
 
   if (Notification.permission === 'denied') {
-    console.log('[Push] Permission previously denied');
+    console.log('[Push] Permission previously denied by user');
+    return;
+  }
+
+  if (!window.isSecureContext) {
+    console.warn('[Push] Cannot subscribe: Web Push requires HTTPS (secure context). ' +
+      'In-app notifications will still work while the tab is open.');
     return;
   }
 
