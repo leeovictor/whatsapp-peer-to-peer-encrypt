@@ -94,7 +94,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (state.token) {
       connectSocket(state.token);
-      http.fetchUsers().catch(() => logout());
+      if (state.user) {
+        http.getUser(state.user.id).catch(() => logout());
+      }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

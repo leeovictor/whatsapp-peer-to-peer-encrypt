@@ -2,7 +2,7 @@ import { useChat } from '@/hooks/useChat';
 import { hasSession } from '@/crypto/session';
 
 export function ConversationList() {
-  const { activePeers, activeUserId, selectUser, users, isOnline, getUnreadCount } = useChat();
+  const { activePeers, activeUserId, selectUser, users, isOnline, getUnreadCount, typingUsers } = useChat();
 
   if (activePeers.length === 0) {
     return (
@@ -19,11 +19,12 @@ export function ConversationList() {
       </h4>
       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {activePeers.map(peerId => {
-          const contact = users.find(u => u.id === peerId);
+          const contact = users.get(peerId);
           const isSecure = hasSession(peerId);
           const online = isOnline(peerId);
           const unread = getUnreadCount(peerId);
           const isActive = activeUserId === peerId;
+          const isTyping = typingUsers.has(peerId);
           return (
             <li
               key={peerId}
@@ -53,7 +54,14 @@ export function ConversationList() {
                   }} />
                 )}
               </div>
-              <span style={{ flex: 1 }}>{contact?.username || peerId.substring(0, 8)}</span>
+              <span style={{ flex: 1 }}>
+                {contact?.username || peerId.substring(0, 8)}
+                {isTyping && (
+                  <span style={{ fontSize: 12, color: '#25d366', fontStyle: 'italic', marginLeft: 8 }}>
+                    digitando...
+                  </span>
+                )}
+              </span>
               {!isActive && unread > 0 && (
                 <span style={{
                   background: '#25d366',

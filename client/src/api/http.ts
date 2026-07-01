@@ -27,8 +27,11 @@ export const register = (username: string, password: string) =>
 export const login = (username: string, password: string) =>
   request<AuthResponse>('POST', '/auth/login', { username, password });
 
-export const fetchUsers = () =>
-  request<{ users: User[] }>('GET', '/users');
+export const searchUser = (username: string) =>
+  request<{ user: User }>('GET', `/users/search?username=${encodeURIComponent(username)}`);
+
+export const getUser = (userId: string) =>
+  request<{ user: User }>('GET', `/users/${userId}`);
 
 export const publishPublicKey = (publicKey: string) =>
   request<{ success: boolean }>('PUT', '/keys', { publicKey });

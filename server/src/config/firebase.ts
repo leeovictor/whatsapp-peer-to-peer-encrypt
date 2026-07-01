@@ -1,9 +1,15 @@
 import { initializeApp, applicationDefault, cert, getApps } from 'firebase-admin/app';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { useLocalStore } from './store';
 
 let firestore: Firestore | null = null;
 
 export function initFirebase(): void {
+  if (useLocalStore()) {
+    console.log('[Firebase] Skipped (local store mode)');
+    return;
+  }
+
   if (getApps().length > 0) return;
 
   const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;

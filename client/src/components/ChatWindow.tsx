@@ -6,13 +6,13 @@ import { MessageInput } from './MessageInput';
 
 export function ChatWindow() {
   const { activeUserId, users, typingUsers, selectUser } = useChat();
+  const contact = users.get(activeUserId ?? '');
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   if (!activeUserId) {
     return <div style={{ padding: 16, color: '#888' }}>Selecione um contato</div>;
   }
 
-  const contact = users.find(u => u.id === activeUserId);
   const isTyping = typingUsers.has(activeUserId);
 
   return (

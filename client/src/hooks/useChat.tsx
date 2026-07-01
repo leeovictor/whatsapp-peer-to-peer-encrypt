@@ -13,7 +13,7 @@ import { showInAppNotification } from './useNotifications';
 interface ChatState {
   messages: Message[];
   messagesByPeer: Map<string, Message[]>;
-  users: User[];
+  users: Map<string, User>;
   activeUserId: string | null;
   activePeers: string[];
   onlineUsers: Set<string>;
@@ -24,6 +24,7 @@ interface ChatContextType extends ChatState {
   sendMessage: (text: string) => void;
   selectUser: (userId: string | null) => void;
   addConversation: (peerId: string) => void;
+  startConversation: (username: string) => Promise<{ success: boolean; error?: string }>;
   isOnline: (userId: string) => boolean;
   getUnreadCount: (peerId: string) => number;
   sendTypingStart: () => void;
@@ -51,9 +52,9 @@ function updateMessageStatus(
 }
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
   const [messagesByPeer, setMessagesByPeer] = useState<Map<string, Message[]>>(new Map());
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<Map<string, User>>(new Map());
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
@@ -65,13 +66,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const activePeers = Array.from(messagesByPeer.keys());
   const messages = activeUserId ? messagesByPeer.get(activeUserId) || [] : [];
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    http.fetchUsers().then(res => {
-      setUsers(res.users);
-    }).catch(() => {});
-  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!user) return;
@@ -112,6 +106,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         return;
       }
     }
+
+    setUsers(prev => {
+      if (prev.has(data.from)) return prev;
+      http.getUser(data.from).then(res => {
+        setUsers(u => new Map(u).set(data.from, res.user));
+      }).catch(() => {});
+      return prev;
+    });
 
     const sessionKey = getSession(data.from);
     if (!sessionKey) return;
@@ -245,6 +247,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
       return next;
     });
+    for (const peerId of peerIds) {
+      http.getUser(peerId).then(res => {
+        setUsers(prev => {
+          if (prev.has(peerId)) return prev;
+          return new Map(prev).set(peerId, res.user);
+        });
+      }).catch(() => {});
+    }
   }, [user]);
 
   useEffect(() => {
@@ -331,13 +341,46 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       });
     }
 
+    if (user && !users.has(userId)) {
+      http.getUser(userId).then(res => {
+        setUsers(prev => new Map(prev).set(userId, res.user));
+      }).catch(() => {});
+    }
+
     try {
       await ensureSession(user!.id, userId);
       console.log(`[Chat] Session established with ${userId}`);
     } catch (err) {
       console.error(`[Chat] Failed to establish session with ${userId}:`, err);
     }
-  }, [user, messagesByPeer]);
+  }, [user, messagesByPeer, users]);
+
+  const startConversation = useCallback(async (username: string): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'Não autenticado' };
+    if (username === user.username) return { success: false, error: 'Você não pode conversar consigo mesmo' };
+
+    const existingUser = Array.from(users.values()).find(u => u.username === username);
+    if (existingUser && messagesByPeer.has(existingUser.id)) {
+      await selectUser(existingUser.id);
+      return { success: true };
+    }
+
+    try {
+      const res = await http.searchUser(username);
+      const foundUser = res.user;
+      setUsers(prev => new Map(prev).set(foundUser.id, foundUser));
+      setMessagesByPeer(prev => {
+        if (prev.has(foundUser.id)) return prev;
+        const next = new Map(prev);
+        next.set(foundUser.id, []);
+        return next;
+      });
+      await selectUser(foundUser.id);
+      return { success: true };
+    } catch {
+      return { success: false, error: 'Usuário não encontrado' };
+    }
+  }, [user, users, messagesByPeer, selectUser]);
 
   const isOnline = useCallback((userId: string) => onlineUsers.has(userId), [onlineUsers]);
 
@@ -348,7 +391,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [messagesByPeer]);
 
   return (
-    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, onlineUsers, typingUsers, sendMessage, selectUser, addConversation, isOnline, getUnreadCount, sendTypingStart, sendTypingStop }}>
+    <ChatContext.Provider value={{ messages, messagesByPeer, users, activeUserId, activePeers, onlineUsers, typingUsers, sendMessage, selectUser, addConversation, startConversation, isOnline, getUnreadCount, sendTypingStart, sendTypingStop }}>
       {children}
     </ChatContext.Provider>
   );
