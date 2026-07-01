@@ -11,7 +11,25 @@ Chat web com criptografia de ponta a ponta (E2EE). O servidor atua apenas como i
 ## Funcionamento
 
 ```
-Browser A → Crypto Layer → Servidor (dumb pipe) → Crypto Layer → Browser B
+Browser A                          Browser B
+    │                                  │
+    ├── Criptografia ──┐    ┌── Criptografia
+    │                   │    │
+    ▼                   ▼    ▼
+┌─────────────────────────────────────┐
+│            Servidor                 │
+│     (apenas transporte/roteamento)  │
+│                                     │
+│  - Autenticação (JWT)               │
+│  - Armazenamento de chaves públicas │
+│  - Roteamento de mensagens via WS   │
+│  - Fila de mensagens offline        │
+│                                     │
+│  NUNCA conhece:                     │
+│  - Chaves privadas                  │
+│  - Chaves de sessão (AES)           │
+│  - Conteúdo das mensagens           │
+└─────────────────────────────────────┘
 ```
 
 - O servidor **nunca** tem acesso ao conteúdo das mensagens, chaves privadas ou chaves de sessão.
