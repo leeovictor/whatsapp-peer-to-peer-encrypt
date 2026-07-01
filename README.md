@@ -10,32 +10,41 @@ Chat web com criptografia de ponta a ponta (E2EE). O servidor atua apenas como i
 
 ## Funcionamento
 
-```
-Browser A                          Browser B
-    │                                  │
-    ├── Criptografia ──┐    ┌── Criptografia
-    │                   │    │
-    ▼                   ▼    ▼
-┌─────────────────────────────────────┐
-│            Servidor                 │
-│     (apenas transporte/roteamento)  │
-│                                     │
-│  - Autenticação (JWT)               │
-│  - Armazenamento de chaves públicas │
-│  - Roteamento de mensagens via WS   │
-│  - Fila de mensagens offline        │
-│                                     │
-│  NUNCA conhece:                     │
-│  - Chaves privadas                  │
-│  - Chaves de sessão (AES)           │
-│  - Conteúdo das mensagens           │
-└─────────────────────────────────────┘
-```
+```mermaid
+flowchart TD
+    subgraph BA["🧑 Browser A"]
+        A1["1. Gera KeyPair ECDH P-256"]
+        A2["2. Chave privada → localStorage"]
+        A3["3. Chave pública → servidor"]
+        A4["4. Busca pubKey do peer B"]
+        A5["5. ECDH(privA + pubB) → AES-256"]
+        A6["6. AES-GCM('Olá') → {iv, ciphertext}"]
+    end
 
-- O servidor **nunca** tem acesso ao conteúdo das mensagens, chaves privadas ou chaves de sessão.
-- Cada usuário gera um par de chaves ECDH P-256 no navegador. A chave privada nunca sai do navegador.
-- As chaves de sessão AES-GCM são derivadas via ECDH e mantidas apenas em memória.
-- Mensagens são criptografadas com AES-GCM antes de sair do navegador.
+    subgraph BB["🧑 Browser B"]
+        B1["1. Gera KeyPair ECDH P-256"]
+        B2["2. Chave privada → localStorage"]
+        B3["3. Chave pública → servidor"]
+        B4["4. Busca pubKey do peer A"]
+        B5["5. ECDH(privB + pubA) → AES-256"]
+        B6["6. AES-GCM decrypt → 'Olá'"]
+    end
+
+    subgraph S["☁️ Servidor (dumb pipe)"]
+        direction TB
+        S1["Autenticação JWT"]
+        S2["Armazena chaves públicas"]
+        S3["Roteia mensagens via WS"]
+        S4["Fila de mensagens offline"]
+        S5["❌ NUNCA conhece:<br/>chaves privadas / sessão AES / conteúdo"]
+    end
+
+    A3 --> S2
+    B3 --> S2
+    A4 --> S2
+    B4 --> S2
+    A6 --> S3
+    S3 --> B6
 
 ## Funcionalidades
 
