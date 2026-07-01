@@ -1,11 +1,12 @@
 import { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { verifyWsToken } from './ws.auth';
-import { handleMessage, sendDeliveryAck } from './ws.handlers';
+import { handleMessage, sendDeliveryAck, sendToUser } from './ws.handlers';
 import { dequeueMessages } from '../messages/messages.store';
-import { ConnectionsMap, WsStatus, WsStatusBatch } from '../types';
+import { ConnectionsMap, WsStatus, WsStatusBatch, WsTypingNotification } from '../types';
 
 const connections: ConnectionsMap = new Map();
+const activeTyping: Map<string, Set<string>> = new Map();
 
 function addConnection(userId: string, ws: WebSocket): void {
   if (!connections.has(userId)) {
@@ -93,12 +94,20 @@ export function initWebSocketServer(httpServer: HttpServer): void {
     }
 
     ws.on('message', (data: Buffer) => {
-      handleMessage(ws, data.toString(), userId, connections);
+      handleMessage(ws, data.toString(), userId, connections, activeTyping);
     });
 
     ws.on('close', () => {
       console.log(`[WS] User disconnected: ${userId}`);
       removeConnection(userId, ws);
+
+      const typingPeers = activeTyping.get(userId);
+      if (typingPeers) {
+        for (const peerId of typingPeers) {
+          sendToUser(peerId, { type: 'typing_stop', from: userId, to: peerId } satisfies WsTypingNotification, connections);
+        }
+        activeTyping.delete(userId);
+      }
 
       if (!connections.has(userId)) {
         const status: WsStatus = { type: 'status', userId, online: false };
@@ -108,6 +117,14 @@ export function initWebSocketServer(httpServer: HttpServer): void {
 
     ws.on('error', () => {
       removeConnection(userId, ws);
+
+      const typingPeers = activeTyping.get(userId);
+      if (typingPeers) {
+        for (const peerId of typingPeers) {
+          sendToUser(peerId, { type: 'typing_stop', from: userId, to: peerId } satisfies WsTypingNotification, connections);
+        }
+        activeTyping.delete(userId);
+      }
 
       if (!connections.has(userId)) {
         const status: WsStatus = { type: 'status', userId, online: false };

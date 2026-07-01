@@ -6,6 +6,7 @@ export function MessageInput() {
   const [text, setText] = useState('');
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const clearTypingTimer = useCallback(() => {
     if (typingStopTimer.current) {
@@ -41,6 +42,7 @@ export function MessageInput() {
     if (text.trim()) {
       sendMessage(text);
       setText('');
+      inputRef.current?.focus();
       if (isTypingRef.current) {
         isTypingRef.current = false;
         clearTypingTimer();
@@ -52,13 +54,14 @@ export function MessageInput() {
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', padding: 12, borderTop: '1px solid #ccc' }}>
       <input
+        ref={inputRef}
         type="text"
         value={text}
         onChange={e => handleChange(e.target.value)}
         placeholder="Digite uma mensagem..."
         style={{ flex: 1, padding: 10, borderRadius: 4, border: '1px solid #ccc' }}
       />
-      <button type="submit" style={{ marginLeft: 8, padding: '10px 16px' }}>Enviar</button>
+      <button type="submit" onMouseDown={e => e.preventDefault()} style={{ marginLeft: 8, padding: '10px 16px' }}>Enviar</button>
     </form>
   );
 }

@@ -61,6 +61,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   userRef.current = user;
   const activeUserIdRef = useRef(activeUserId);
   activeUserIdRef.current = activeUserId;
+  const typingTimeoutRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const activePeers = Array.from(messagesByPeer.keys());
   const messages = activeUserId ? messagesByPeer.get(activeUserId) || [] : [];
@@ -186,6 +187,21 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }
 
   function handleTypingStart(data: WsTypingStartNotification) {
+    const existing = typingTimeoutRef.current.get(data.from);
+    if (existing) clearTimeout(existing);
+
+    const timeout = setTimeout(() => {
+      setTypingUsers(prev => {
+        if (!prev.has(data.from)) return prev;
+        const next = new Set(prev);
+        next.delete(data.from);
+        return next;
+      });
+      typingTimeoutRef.current.delete(data.from);
+    }, 15000);
+
+    typingTimeoutRef.current.set(data.from, timeout);
+
     setTypingUsers(prev => {
       if (prev.has(data.from)) return prev;
       return new Set(prev).add(data.from);
@@ -193,6 +209,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }
 
   function handleTypingStop(data: WsTypingStopNotification) {
+    const timeout = typingTimeoutRef.current.get(data.from);
+    if (timeout) {
+      clearTimeout(timeout);
+      typingTimeoutRef.current.delete(data.from);
+    }
+
     setTypingUsers(prev => {
       if (!prev.has(data.from)) return prev;
       const next = new Set(prev);

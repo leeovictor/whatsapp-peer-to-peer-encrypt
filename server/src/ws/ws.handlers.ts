@@ -29,7 +29,7 @@ function deliverToUser(recipientId: string, outgoing: WsOutgoingMessage, connect
   return delivered;
 }
 
-function sendToUser(userId: string, data: unknown, connections: ConnectionsMap): boolean {
+export function sendToUser(userId: string, data: unknown, connections: ConnectionsMap): boolean {
   const userConns = connections.get(userId);
   if (!userConns || userConns.size === 0) return false;
 
@@ -43,7 +43,7 @@ function sendToUser(userId: string, data: unknown, connections: ConnectionsMap):
   return sent;
 }
 
-export function handleMessage(ws: WebSocket, data: string, userId: string, connections: ConnectionsMap): void {
+export function handleMessage(ws: WebSocket, data: string, userId: string, connections: ConnectionsMap, activeTyping: Map<string, Set<string>>): void {
   let parsed: unknown;
   try {
     parsed = JSON.parse(data);
@@ -62,7 +62,7 @@ export function handleMessage(ws: WebSocket, data: string, userId: string, conne
         return;
       case 'typing_start':
       case 'typing_stop':
-        handleTypingNotification(ws, parsed as WsTypingNotification, userId, connections);
+        handleTypingNotification(ws, parsed as WsTypingNotification, userId, connections, activeTyping);
         return;
     }
   }
@@ -113,7 +113,18 @@ function handleChatMessage(ws: WebSocket, parsed: WsMessage, userId: string, con
   }
 }
 
-function handleTypingNotification(ws: WebSocket, parsed: WsTypingNotification, userId: string, connections: ConnectionsMap): void {
+function handleTypingNotification(ws: WebSocket, parsed: WsTypingNotification, userId: string, connections: ConnectionsMap, activeTyping: Map<string, Set<string>>): void {
+  if (parsed.type === 'typing_start') {
+    if (!activeTyping.has(userId)) activeTyping.set(userId, new Set());
+    activeTyping.get(userId)!.add(parsed.to);
+  } else {
+    const typingSet = activeTyping.get(userId);
+    if (typingSet) {
+      typingSet.delete(parsed.to);
+      if (typingSet.size === 0) activeTyping.delete(userId);
+    }
+  }
+
   const outgoing: WsTypingNotification = {
     type: parsed.type,
     from: userId,
